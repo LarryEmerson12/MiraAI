@@ -2,6 +2,9 @@
 
 Mira AI is a lightweight Python CLI assistant that runs your shell commands — but with a twist! It also supports special `ai` commands so you can interact with it directly. Think of Mira as Claude, but free and open source — a handy AI helper right in your terminal.
 
+![MiraAI_Photo](./MiraAI_Photo.png)
+*Basic usage of MiraAI.*
+
 ```bash
 > ai greet
 Mira AI: Hello! How can I assist you today?
