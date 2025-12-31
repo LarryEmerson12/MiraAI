@@ -1,46 +1,17 @@
 #!/usr/bin/env python3
 
-import json
-import subprocess
-from pathlib import Path
 from termcolor import colored
 from rich.console import Console
-
-# =========================
-# Paths & Memory
-# =========================
+import subprocess
+from model import MiraModel  # Your AI model class
 
 VERSION = "1.0.1"
 BOX_WIDTH = 54
-
-CONFIG_DIR = Path.home() / ".config" / "mira"
-MEMORY_FILE = CONFIG_DIR / "memory.json"
-
 console = Console()
 
-def load_memory():
-    if MEMORY_FILE.exists():
-        try:
-            return json.loads(MEMORY_FILE.read_text())
-        except Exception:
-            pass
-    return {
-        "name": None,
-        "knowledge": {}
-    }
-
-def save_memory(memory):
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    MEMORY_FILE.write_text(json.dumps(memory, indent=2))
-
-# =========================
-# UI Helpers
-# =========================
-
-def fit_text(text, width):
-    """Trim text so it always fits inside the box."""
-    if len(text) > width:
-        return text[: width - 1] + "…"
+def fit_text(text, max_len):
+    if len(text) > max_len:
+        return text[:max_len - 3] + "..."
     return text
 
 def print_ui(name):
@@ -52,7 +23,7 @@ def print_ui(name):
     print(colored(f"|{welcome}|", 'light_cyan'))
     print(colored("|" + " " * BOX_WIDTH + "|", 'light_cyan'))
 
-    # Alien
+    # Alien pixel art
     print(colored("|                   ", 'light_cyan') + "  " +
           colored(" " * 12, None, 'on_light_cyan') + "  " +
           colored("                   |", 'light_cyan'))
@@ -83,70 +54,57 @@ def print_ui(name):
     print()
     print("--------------------------------------------------------")
     print()
-
-# =========================
-# Mira AI Logic
-# =========================
-
-def mira_ai(prompt, memory):
-    prompt = prompt.lower().strip()
-
-    # Built-in commands
-    if prompt == "help":
-        return (
-            "AI commands:\n"
-            "  ai help   - show this message\n"
-            "  ai greet  - say hello\n\n"
-            "I can also learn from you 🌕"
-        )
-
-    if prompt == "greet":
-        return "Hello 🌕 How can I help?"
-
-    # Learned knowledge
-    if prompt in memory["knowledge"]:
-        return memory["knowledge"][prompt]
-
-    console.print("[yellow]I don't know that yet.[/yellow]")
-    answer = input("Teach me: ").strip()
-
-    if answer:
-        memory["knowledge"][prompt] = answer
-        save_memory(memory)
-        return "Got it! I'll remember that 🌕"
-
-    return "Alright."
-
-# =========================
-# Main
-# =========================
+    print(colored("Type `miraexit` to quit.", 'light_red'))
+    print()
 
 def main():
-    memory = load_memory()
+    model = MiraModel()
 
-    if not memory.get("name"):
-        name = input("What's your name? ").strip()
-        memory["name"] = name if name else "Friend"
-        save_memory(memory)
+    if not model.memory.get("name"):
+        model.memory["name"] = input("What's your name? ").strip() or "there"
+        model.save_memory()
 
-    print_ui(memory["name"])
-    print(colored("Type `miraexit` to exit.", 'light_red'))
+    print_ui(model.memory["name"])
 
     while True:
-        print(colored("🌕 Type a command or `ai help`", 'dark_grey'))
+        console.print("🌕 Type a command or `ai help`", style="dim")
         command = input("🌕 > ").strip()
 
         if not command:
             continue
 
-        if command.lower() == "miraexit":
+        if command == "miraexit":
             console.print("Goodbye 🌕", style="cyan")
             break
 
         if command.startswith("ai "):
-            response = mira_ai(command[3:], memory)
-            console.print(f"[cyan]Mira AI:[/cyan] {response}")
-            continue
+            ai_command = command[3:].strip()
+
+            if ai_command == "help":
+                console.print("[cyan]AI commands:\n - ai greet\n - ai help\n - ai train question|answer[/cyan]")
+                continue
+
+            elif ai_command == "greet":
+                console.print("[cyan]Hello! How can I assist you today?[/cyan]")
+                continue
+
+            elif ai_command.startswith("train "):
+                try:
+                    _, qa = ai_command.split(" ", 1)
+                    question, answer = qa.split("|", 1)
+                    question = question.strip().lower()
+                    answer = answer.strip()
+                    model.memory["knowledge"][question] = answer
+                    model.save_memory()
+                    console.print(f"[green]Trained! I now know the answer to: '{question}'[/green]")
+                except Exception:
+                    console.print("[red]Usage: ai train question|answer[/red]")
+                continue
+
+            else:
+                response = model.get_response(ai_command)
+                console.print(f"[cyan]Mira AI:[/cyan] {response}")
+                continue
 
         subprocess.run(command, shell=True)
 

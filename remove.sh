@@ -1,24 +1,23 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-set -e
+echo "Removing mira executable from ~/bin..."
+rm -f ~/bin/mira
 
-TARGET="$HOME/bin/mira"
-
-echo "Removing Mira AI..."
-
-if [ -f "$TARGET" ]; then
-  rm "$TARGET"
-  echo "Removed $TARGET"
-else
-  echo "Mira not found at $TARGET"
+# Remove PATH addition from .bashrc if exists
+if grep -q 'export PATH="$HOME/bin:$PATH"' ~/.bashrc; then
+  sed -i '/export PATH="\$HOME\/bin:\$PATH"/d' ~/.bashrc
+  echo "Removed PATH modification from ~/.bashrc"
 fi
 
-# Remove PATH modification from ~/.bashrc
-sed -i '/export PATH=.*\$HOME\/bin/d' "$HOME/.bashrc"
-echo "Removed PATH modification from ~/.bashrc (if it existed)"
+# Ask about deleting config data
+read -p "Do you want to delete Mira's memory data (~/.config/mira)? [y/N]: " answer
 
-echo "Uninstallation complete! Please restart your terminal or run:"
-echo "  source ~/.bashrc"
+if [[ "$answer" =~ ^[Yy]$ ]]; then
+  echo "Deleting memory data..."
+  rm -rf ~/.config/mira
+else
+  echo "Memory data retained."
+fi
+
+echo "Removal complete! Please run 'source ~/.bashrc' or restart your terminal to apply changes."
 echo "🌕 Farewell, traveller."
-
-exit 0
