@@ -1,34 +1,50 @@
 #!/usr/bin/env python3
 
-from termcolor import colored
-import subprocess
 import json
+import subprocess
 from pathlib import Path
+from termcolor import colored
+from rich.console import Console
+
+# =========================
+# Paths & Memory
+# =========================
 
 VERSION = "1.0.1"
 BOX_WIDTH = 54
 
 CONFIG_DIR = Path.home() / ".config" / "mira"
-CONFIG_FILE = CONFIG_DIR / "config.json"
+MEMORY_FILE = CONFIG_DIR / "memory.json"
 
+console = Console()
 
-def load_name():
-    if CONFIG_FILE.exists():
+def load_memory():
+    if MEMORY_FILE.exists():
         try:
-            with open(CONFIG_FILE, "r") as f:
-                return json.load(f).get("name")
+            return json.loads(MEMORY_FILE.read_text())
         except Exception:
-            return None
-    return None
+            pass
+    return {
+        "name": None,
+        "knowledge": {}
+    }
 
-
-def save_name(name):
+def save_memory(memory):
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, "w") as f:
-        json.dump({"name": name}, f)
+    MEMORY_FILE.write_text(json.dumps(memory, indent=2))
 
+# =========================
+# UI Helpers
+# =========================
+
+def fit_text(text, width):
+    """Trim text so it always fits inside the box."""
+    if len(text) > width:
+        return text[: width - 1] + "…"
+    return text
 
 def print_ui(name):
+    name = fit_text(name, BOX_WIDTH - len("Welcome back, !"))
     welcome = f"Welcome back, {name}!".center(BOX_WIDTH)
 
     print(colored(f"╭------------------- Mira AI v{VERSION} -------------------╮", 'light_cyan'))
@@ -68,60 +84,71 @@ def print_ui(name):
     print("--------------------------------------------------------")
     print()
 
+# =========================
+# Mira AI Logic
+# =========================
+
+def mira_ai(prompt, memory):
+    prompt = prompt.lower().strip()
+
+    # Built-in commands
+    if prompt == "help":
+        return (
+            "AI commands:\n"
+            "  ai help   - show this message\n"
+            "  ai greet  - say hello\n\n"
+            "I can also learn from you 🌕"
+        )
+
+    if prompt == "greet":
+        return "Hello 🌕 How can I help?"
+
+    # Learned knowledge
+    if prompt in memory["knowledge"]:
+        return memory["knowledge"][prompt]
+
+    console.print("[yellow]I don't know that yet.[/yellow]")
+    answer = input("Teach me: ").strip()
+
+    if answer:
+        memory["knowledge"][prompt] = answer
+        save_memory(memory)
+        return "Got it! I'll remember that 🌕"
+
+    return "Alright."
+
+# =========================
+# Main
+# =========================
 
 def main():
-    print()
+    memory = load_memory()
 
-    name = load_name()
-    if not name:
-        name = input("What's your name? ").strip() or "there"
-        name = name[:30]
-        save_name(name)
+    if not memory.get("name"):
+        name = input("What's your name? ").strip()
+        memory["name"] = name if name else "Friend"
+        save_memory(memory)
 
-    print_ui(name)
-
-    print(colored("Type 'miraexit' to quit!", 'light_red'))
-    print(colored("Type 'ai help' for help!", 'light_cyan'))
-    print()
+    print_ui(memory["name"])
+    print(colored("Type `miraexit` to exit.", 'light_red'))
 
     while True:
         print(colored("🌕 Type a command or `ai help`", 'dark_grey'))
-        print(colored("🌕 > ", 'green'), end="")
-        commands = input()
+        command = input("🌕 > ").strip()
 
-        if commands.strip().lower() == 'miraexit':
-            print(colored("Exiting Mira AI. Goodbye!", 'red'))
-            break
-
-        if not commands.strip():
+        if not command:
             continue
 
-        if commands.startswith("ai"):
-            ai_command = commands[2:].strip()
+        if command.lower() == "miraexit":
+            console.print("Goodbye 🌕", style="cyan")
+            break
 
-            if ai_command == "greet":
-                print(colored("Hello! How can I assist you today?", 'light_cyan'))
+        if command.startswith("ai "):
+            response = mira_ai(command[3:], memory)
+            console.print(f"[cyan]Mira AI:[/cyan] {response}")
+            continue
 
-            elif ai_command == "help":
-                print(colored(
-                    "Available AI commands:\n"
-                    " - ai greet\n"
-                    " - ai help\n"
-                    " - miraexit",
-                    'light_cyan'
-                ))
-
-            else:
-                print(colored(f"Unknown AI command: {ai_command}", 'yellow'))
-
-        else:
-            result = subprocess.run(commands, shell=True)
-            if result.returncode != 0:
-                print(colored(
-                    f"Command failed with exit code {result.returncode}",
-                    'red'
-                ))
-
+        subprocess.run(command, shell=True)
 
 if __name__ == "__main__":
     main()
