@@ -18,10 +18,39 @@ Mira AI: Exiting Mira AI. Goodbye!
 
 ## Installation
 
-To install Mira AI, clone or download the repository, then run the install.sh script:
+## 🪟Windows
+
+To install Mira AI on Windows, clone or download the repository, then open Git Bash. You can install git here: https://git-scm.com/install/windows
+
+Then you can run the `install.sh` script:
 
 ```bash
-bash install.sh
+./install.sh
+```
+
+This will:
+
+- Make mira.py executable
+- Copy it to ~/bin/mira
+- Add ~/bin to your PATH if it’s not already there
+
+After installation, reload your terminal environment:
+
+```bash
+source ~/.bashrc
+```
+
+Now you can run mira from anywhere!
+
+> **Heads up!**
+> Make sure you run install.sh from the repo root folder so it can find mira.py.
+
+## 🐧Linux/ 🍎MacOS
+
+To install Mira AI on Linux or MacOS, clone or download the repository, then run the `install.sh` script:
+
+```bash
+./install.sh
 ```
 
 This will:
@@ -54,8 +83,10 @@ Just type `mira` in your terminal and start typing commands or AI prompts!
 If you want to uninstall, simply run:
 
 ```bash
-bash remove.sh
+./remove.sh
 ```
+
+⚠️ You'll need to open up the Git bash terminal if you want to run this on Windows as well.
 
 This will:
 
