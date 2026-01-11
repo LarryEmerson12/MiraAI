@@ -3,66 +3,99 @@ set -e
 
 echo "🌕 Installing Mira AI..."
 
-# ---------- Make script executable ----------
-chmod +x mira.py
-chmod +x install.sh
+# ----------------------------
+# Detect OS (Linux / macOS / Windows Git Bash)
+# ----------------------------
+OS="$(uname -s)"
+IS_WINDOWS=false
 
-# ---------- Detect Python ----------
-if command -v python3 >/dev/null 2>&1; then
-  PYTHON=python3
-elif command -v python >/dev/null 2>&1; then
-  PYTHON=python
-else
-  echo "❌ Python not found"
-  exit 1
-fi
+case "$OS" in
+  MINGW*|MSYS*|CYGWIN*)
+    IS_WINDOWS=true
+    ;;
+esac
 
-# ---------- Install Python deps ----------
-echo "📦 Installing Python dependencies..."
-$PYTHON -m pip install --user --upgrade pip
-$PYTHON -m pip install --user termcolor rich
-
-# ---------- Install location ----------
+# ----------------------------
+# Paths
+# ----------------------------
 BIN_DIR="$HOME/bin"
-INSTALL_DIR="$BIN_DIR/mira"
-
-mkdir -p "$INSTALL_DIR"
-
-# ---------- Copy files ----------
-cp mira.py "$INSTALL_DIR/mira"
-cp model.py "$INSTALL_DIR/model.py"
-chmod +x "$INSTALL_DIR/mira"
-
-# ---------- PATH setup ----------
-if ! echo "$PATH" | grep -q "$BIN_DIR"; then
-  echo 'export PATH="$HOME/bin:$PATH"' >> "$HOME/.bashrc"
-  echo "➕ Added ~/bin to PATH"
-fi
-
-# ---------- Config directory ----------
 CONFIG_DIR="$HOME/.config/mira"
+
+mkdir -p "$BIN_DIR"
 mkdir -p "$CONFIG_DIR"
 
-# ---------- Seed memory ----------
-MEMORY_FILE="$CONFIG_DIR/memory.json"
-if [ ! -f "$MEMORY_FILE" ]; then
-  echo "🧠 Creating seed knowledge..."
-  cat > "$MEMORY_FILE" << 'EOF'
-{
-  "name": null,
-  "knowledge": {
-    "hi": "Hello 🌕",
-    "hello": "Hi there 🌕",
-    "what is mira": "Mira is a lightweight, local CLI AI assistant.",
-    "what is ai": "AI stands for Artificial Intelligence.",
-    "what is python": "Python is a high-level programming language."
-  }
-}
-EOF
+# ----------------------------
+# Clean old broken installs
+# ----------------------------
+if [ -d "$BIN_DIR/mira" ]; then
+  echo "⚠️ Removing old mira folder (wrong install)..."
+  rm -rf "$BIN_DIR/mira"
 fi
 
+# ----------------------------
+# Copy files
+# ----------------------------
+echo "📁 Installing files..."
+
+cp mira.py "$BIN_DIR/mira.py"
+cp model.py "$BIN_DIR/model.py"
+
+# ----------------------------
+# Create launcher (mira)
+# ----------------------------
+echo "🚀 Creating launcher..."
+
+cat > "$BIN_DIR/mira" << 'EOF'
+#!/usr/bin/env python3
+import os
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SCRIPT_DIR)
+
+from mira import main
+
+if __name__ == "__main__":
+    main()
+EOF
+
+chmod +x "$BIN_DIR/mira"
+
+# ----------------------------
+# Python dependency install
+# ----------------------------
+echo "🐍 Installing Python dependencies..."
+
+PYTHON_BIN="python3"
+if $IS_WINDOWS; then
+  PYTHON_BIN="python"
+fi
+
+$PYTHON_BIN -m pip install --user --upgrade pip
+$PYTHON_BIN -m pip install --user rich termcolor
+
+# ----------------------------
+# Ensure PATH
+# ----------------------------
+if ! echo "$PATH" | grep -q "$HOME/bin"; then
+  echo "➕ Adding ~/bin to PATH"
+
+  if [ -f "$HOME/.bashrc" ]; then
+    echo 'export PATH="$HOME/bin:$PATH"' >> "$HOME/.bashrc"
+  fi
+
+  if [ -f "$HOME/.zshrc" ]; then
+    echo 'export PATH="$HOME/bin:$PATH"' >> "$HOME/.zshrc"
+  fi
+fi
+
+# ----------------------------
+# Success
+# ----------------------------
 echo
-echo "✅ Installation complete!"
-echo "➡️ Restart your terminal or run: source ~/.bashrc"
-echo "➡️ Then type: mira"
-echo "🌕 Welcome, traveller."
+echo "✅ Mira AI installed successfully!"
+echo
+echo "👉 Restart your terminal, then run:"
+echo
+echo "   mira"
+echo
